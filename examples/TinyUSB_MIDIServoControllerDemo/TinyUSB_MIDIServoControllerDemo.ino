@@ -1,7 +1,7 @@
 #include <Adafruit_TinyUSB.h>
 #include <MIDI.h>
 #include <ESP32Servo.h>
-#include <USB_MIDIServoController.h>
+#include <MIDIServoController.h>
 
 // Create a USB MIDI instance
 Adafruit_USBD_MIDI usb_midi;
@@ -36,15 +36,15 @@ void setup() {
     servoController.setServoPin(7, 17, 500, 2500, 1500); // Servo 8
 
     // Set 14-bit CC numbers for servos
-    // Position (Coarse, Fine), Speed (Coarse, Fine)
-    servoController.setServoCCs(0, 20, 52, 30, 62);  // Servo 1
-    servoController.setServoCCs(1, 21, 53, 31, 63);  // Servo 2
-    servoController.setServoCCs(2, 22, 54, 32, 64);  // Servo 3
-    servoController.setServoCCs(3, 23, 55, 33, 65);  // Servo 4
-    servoController.setServoCCs(4, 24, 56, 34, 66);  // Servo 5
-    servoController.setServoCCs(5, 25, 57, 35, 67);  // Servo 6
-    servoController.setServoCCs(6, 26, 58, 36, 68);  // Servo 7
-    servoController.setServoCCs(7, 27, 59, 37, 69);  // Servo 8
+    // Position (Coarse, Fine), Speed
+    servoController.setServoCCs(0, 20, 52, 30);  // Servo 1
+    servoController.setServoCCs(1, 21, 53, 31);  // Servo 2
+    servoController.setServoCCs(2, 22, 54, 32);  // Servo 3
+    servoController.setServoCCs(3, 23, 55, 33);  // Servo 4
+    servoController.setServoCCs(4, 24, 56, 34);  // Servo 5
+    servoController.setServoCCs(5, 25, 57, 35);  // Servo 6
+    servoController.setServoCCs(6, 26, 58, 36);  // Servo 7
+    servoController.setServoCCs(7, 27, 59, 37);  // Servo 8
 }
 
 void loop() {

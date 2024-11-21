@@ -1,4 +1,4 @@
-#include "USB_MIDIServoController.h"
+#include "MIDIServoController.h"
 
 // Static member initialization
 MIDIServoController* MIDIServoController::instance = nullptr;
@@ -32,14 +32,13 @@ void MIDIServoController::setServoPin(uint8_t servoIndex, uint8_t pin, int minUs
     config.active = true;
 }
 
-void MIDIServoController::setServoCCs(uint8_t servoIndex, uint8_t coarseCCPosition, uint8_t fineCCPosition, uint8_t coarseCCSpeed, uint8_t fineCCSpeed) {
+void MIDIServoController::setServoCCs(uint8_t servoIndex, uint8_t coarseCCPosition, uint8_t fineCCPosition, uint8_t CCSpeed) {
     if (servoIndex >= MIDI_MAX_SERVOS) return;
 
     ServoConfig& config = servos[servoIndex];
     config.coarseCCPosition = coarseCCPosition;
     config.fineCCPosition = fineCCPosition;
-    config.coarseCCSpeed = coarseCCSpeed;
-    config.fineCCSpeed = fineCCSpeed;
+    config.CCSpeed = CCSpeed;
 }
 
 void MIDIServoController::setServoPosition(uint8_t servoIndex, int microseconds) {
@@ -88,13 +87,9 @@ void MIDIServoController::handleControlChange(byte channel, byte number, byte va
             config.targetPos = mapCCToMicroseconds(fullValue, config);
         }
 
-        if (number == config.coarseCCSpeed) {
-            config.lastCoarseSpeed = value;
-            uint16_t fullValue = (config.lastCoarseSpeed << 7) | (config.fineCCSpeed < 0xFF ? 0 : value);
-            config.speed = mapCCToSpeed(fullValue);
-        } else if (number == config.fineCCSpeed) {
-            uint16_t fullValue = (config.lastCoarseSpeed << 7) | value;
-            config.speed = mapCCToSpeed(fullValue);
+        // Handle standard 7-bit Speed CC
+        if (number == config.CCSpeed) {
+            config.speed = mapCCToSpeed(value);
         }
     }
 }
@@ -110,5 +105,5 @@ int MIDIServoController::mapCCToMicroseconds(uint16_t value, const ServoConfig& 
 }
 
 float MIDIServoController::mapCCToSpeed(uint16_t value) {
-    return map(value, 0, 16383, 100, 2000) / 1000.0;
+    return map(value, 0, 127, 100, 2000) / 1000.0;
 }

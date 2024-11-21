@@ -20,12 +20,11 @@ public:
                      int minUs = 500, int maxUs = 2500, 
                      int centerUs = 1500);
 
-    // Set CC numbers for a servo (supports 14-bit CCs)
+    // Set CC numbers for a servo
     void setServoCCs(uint8_t servoIndex, 
                      uint8_t coarseCCPosition, 
                      uint8_t fineCCPosition,
-                     uint8_t coarseCCSpeed = 0xFF, 
-                     uint8_t fineCCSpeed = 0xFF);
+                     uint8_t CCSpeed = 0xFF);
 
     // Manual servo control (alternative to MIDI)
     void setServoPosition(uint8_t servoIndex, int microseconds);
@@ -50,17 +49,17 @@ private:
 
         float currentPos = 1500;
         float targetPos = 1500;
-        float speed = 1.0; // microseconds per millisecond
+        float speed = 22.0; // microseconds per millisecond
 
         // 14-bit CC support
         uint8_t coarseCCPosition = 0xFF; // Disabled
         uint8_t fineCCPosition = 0xFF;   // Disabled
-        uint8_t coarseCCSpeed = 0xFF;   // Disabled
-        uint8_t fineCCSpeed = 0xFF;     // Disabled
+
+        // 7-bit CC support
+        uint8_t CCSpeed = 0xFF;   // Disabled
 
         // Temporary storage for 14-bit CC values
         uint8_t lastCoarsePosition = 0;
-        uint8_t lastCoarseSpeed = 0;
     };
 
     ServoConfig servos[MIDI_MAX_SERVOS];

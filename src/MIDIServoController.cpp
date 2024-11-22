@@ -27,6 +27,7 @@ void MIDIServoController::setServoPin(uint8_t servoIndex, uint8_t pin, int minUs
     config.currentPos = centerUs;
     config.targetPos = centerUs;
 
+    config.servo.setPeriodHertz(200);
     config.servo.attach(pin, minUs, maxUs);
     config.servo.writeMicroseconds(centerUs);
     config.active = true;
@@ -105,5 +106,5 @@ int MIDIServoController::mapCCToMicroseconds(uint16_t value, const ServoConfig& 
 }
 
 float MIDIServoController::mapCCToSpeed(uint16_t value) {
-    return map(value, 0, 127, 100, 2000) / 1000.0;
+    return map(value, 0, 127, 500, 22000) / 1000.0;
 }

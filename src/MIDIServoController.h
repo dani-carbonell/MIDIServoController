@@ -5,6 +5,7 @@
 #include <ESP32Servo.h>
 #include <MIDI.h>
 #include <Adafruit_TinyUSB.h> // USB MIDI support
+#include <Debug.h>
 
 class MIDIServoController {
 public:

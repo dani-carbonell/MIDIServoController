@@ -14,8 +14,10 @@ MIDIServoController servoController;
 
 void setup() {
     
-    Serial.begin(115200);
-    Debug::begin(Serial, Debug::DEBUG_INFO);  // Use Serial for debug output
+    //Uncomment to enable debug output
+    //Serial.begin(115200);
+    //Debug::begin(Serial, Debug::DEBUG_DEBUG);
+    
     usb_midi.setStringDescriptor("Servo Controller");
     // Start USB MIDI
     usb_midi.begin();

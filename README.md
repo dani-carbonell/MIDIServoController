@@ -1,18 +1,17 @@
 # MIDI Servo Controller Library
 
-The **MIDI Servo Controller** library for Arduino enables seamless integration of MIDI-based control over servos, making it perfect for interactive installations, robotics, animatronics, and other creative applications. Built for the ESP32S2 platform, this library allows up to 16 servos to be controlled via standard MIDI Control Change (CC) messages, including 14-bit high-precision CCs. 
+The **MIDI Servo Controller** library for Arduino enables seamless integration of MIDI-based control over servos, making it perfect for interactive installations, robotics, animatronics, and other creative applications. Built for the **ESP32-S2/S3** platform, this library allows up to 16 servos to be controlled via standard MIDI Control Change (CC) messages, including 14-bit high-precision CCs. 
 
 ---
 
 ## Features
 
 - **Multi-Servo Support**: Control up to 16 servos simultaneously.
-- **MIDI Integration**: Full support for standard MIDI CC messages, including USB MIDI on the ESP32.
-- **Fine-Grained Control**: Configure servo speed, position, and movement limits.
+- **MIDI Integration**: Only supports MIDI CC messages
+- **Servo Limits**: Configure servo limits
 - **14-bit MIDI CC Support**: For high-resolution servo positioning.
 - **Manual Override**: Directly set servo positions or speeds programmatically without MIDI input.
-- **Dynamic Updates**: Real-time updates through the `update()` method for smooth motion transitions.
-
+- **ESP32 S2/S3**: Meant for ESP32s with native USB. This could change in the future
 ---
 
 ## Installation

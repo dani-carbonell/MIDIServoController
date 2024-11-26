@@ -1,3 +1,17 @@
+/*
+  TinyUSB MIDI Servo Controller Demo
+  
+  This example demonstrates how to use the MIDIServoController library with an ESP32 LOLIN S2 mini.
+  It creates a USB MIDI device that can control up to 8 servos using MIDI CC messages.
+  Each servo can be controlled with 14-bit position resolution and speed control.
+
+  Author: Dani Carbonell (danicarbonellrubio@gmail.com)
+  
+  This example code is in the public domain.
+  
+  https://github.com/danicarbonell/MIDIServoController
+*/
+
 #include <Adafruit_TinyUSB.h>
 #include <MIDI.h>
 #include <ESP32Servo.h>
@@ -33,9 +47,9 @@ void setup() {
     servoController.setServoPin(2, 7, 500, 2500, 1500);  // Servo 3
     servoController.setServoPin(3, 9, 500, 2500, 1500);  // Servo 4
     servoController.setServoPin(4, 11, 500, 2500, 1500); // Servo 5
-    servoController.setServoPin(5, 13, 500, 2500, 1500); // Servo 6
-    servoController.setServoPin(6, 15, 500, 2500, 1500); // Servo 7
-    servoController.setServoPin(7, 17, 500, 2500, 1500); // Servo 8
+    servoController.setServoPin(5, 2, 500, 2500, 1500); // Servo 6
+    servoController.setServoPin(6, 4, 500, 2500, 1500); // Servo 7
+    servoController.setServoPin(7, 6, 500, 2500, 1500); // Servo 8
 
     // Set 14-bit CC numbers for servos
     // Position (Coarse, Fine), Speed

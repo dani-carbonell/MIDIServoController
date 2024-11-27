@@ -27,7 +27,11 @@ MIDI_CREATE_INSTANCE(Adafruit_USBD_MIDI, usb_midi, MIDI);
 MIDIServoController servoController;
 
 void setup() {
-
+    
+    //Uncomment to enable debug output
+    //Serial.begin(115200);
+    //Debug::begin(Serial, Debug::DEBUG_DEBUG);
+    
     usb_midi.setStringDescriptor("Servo Controller");
     // Start USB MIDI
     usb_midi.begin();

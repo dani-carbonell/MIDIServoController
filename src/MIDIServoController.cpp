@@ -10,14 +10,20 @@ MIDIServoController::MIDIServoController() {
 void MIDIServoController::begin(MIDI_NAMESPACE::MidiInterface<MIDI_NAMESPACE::SerialMIDI<Adafruit_USBD_MIDI>>& midiInterface) {
     // Set up MIDI
     midiInterface.setHandleControlChange(staticControlChangeHandler);
+    Debug::info("MIDIServoController initialized");
+
 }
 
 void MIDIServoController::setServoPin(uint8_t servoIndex, uint8_t pin, int minUs, int maxUs, int centerUs) {
-    if (servoIndex >= MIDI_MAX_SERVOS) return;
+    if (servoIndex >= MIDI_MAX_SERVOS) {
+        Debug::error("Invalid servo index: " + String(servoIndex));
+        return;
+    }
 
     ServoConfig& config = servos[servoIndex];
 
     if (config.active) {
+        Debug::info("Detaching servo " + String(servoIndex) + " from pin " + String(pin));
         config.servo.detach();
     }
 
@@ -27,6 +33,12 @@ void MIDIServoController::setServoPin(uint8_t servoIndex, uint8_t pin, int minUs
     config.currentPos = centerUs;
     //config.targetPos = centerUs;
 
+    Debug::info("Servo " + String(servoIndex) + 
+                " on pin " + String(pin) + 
+                " (min: " + String(minUs) + 
+                "us, max: " + String(maxUs) + 
+                "us, center: " + String(centerUs) + "us)");
+                
     config.servo.setPeriodHertz(200);
     config.servo.attach(pin, minUs, maxUs);
     config.servo.writeMicroseconds(centerUs);
@@ -34,7 +46,10 @@ void MIDIServoController::setServoPin(uint8_t servoIndex, uint8_t pin, int minUs
 }
 
 void MIDIServoController::setServoCCs(uint8_t servoIndex, uint8_t coarseCCPosition, uint8_t fineCCPosition, uint8_t CCSpeed) {
-    if (servoIndex >= MIDI_MAX_SERVOS) return;
+    if (servoIndex >= MIDI_MAX_SERVOS) {
+        Debug::error("Invalid servo index for CC assignment: " + String(servoIndex));
+        return;
+    }
 
     ServoConfig& config = servos[servoIndex];
     config.coarseCCPosition = coarseCCPosition;
@@ -43,10 +58,28 @@ void MIDIServoController::setServoCCs(uint8_t servoIndex, uint8_t coarseCCPositi
 }
 
 void MIDIServoController::setServoPosition(uint8_t servoIndex, int microseconds) {
-    if (servoIndex >= MIDI_MAX_SERVOS || !servos[servoIndex].active) return;
-
+    if (servoIndex >= MIDI_MAX_SERVOS) {
+        Debug::error("Invalid servo index for position: " + String(servoIndex));
+        return;
+    }
+    
+    if (!servos[servoIndex].active) {
+        Debug::warn("Attempt to move inactive servo: " + String(servoIndex));
+        return;
+    }
     ServoConfig& config = servos[servoIndex];
-    config.targetPos = constrain(microseconds, config.minUs, config.maxUs);
+    int constrainedPos = constrain(microseconds, config.minUs, config.maxUs);
+    
+    if (constrainedPos != microseconds) {
+        Debug::warn("Servo " + String(servoIndex) + 
+                   " position constrained from " + String(microseconds) + 
+                   " to " + String(constrainedPos));
+    }
+    
+    Debug::verbose("Servo " + String(servoIndex) + 
+                  " target position: " + String(constrainedPos) + "us");
+    
+    config.targetPos = constrainedPos;
 }
 
 void MIDIServoController::setServoSpeed(uint8_t servoIndex, float speedUsPerMs) {
@@ -71,11 +104,22 @@ void MIDIServoController::update() {
 
         config.currentPos += move;
         config.currentPos = constrain(config.currentPos, config.minUs, config.maxUs);
-        config.servo.writeMicroseconds(round(config.currentPos));
+        int newPos = round(config.currentPos);
+        
+        Debug::verbose("S" + String(i) + 
+                      " to " + String(newPos) + 
+                      " (spd: " + String(config.speed) + 
+                      " dT: " + String(deltaTime) + "ms)");
+        
+        config.servo.writeMicroseconds(newPos);
     }
 }
 
 void MIDIServoController::handleControlChange(byte channel, byte number, byte value) {
+    Debug::debug("CC received - Channel: " + String(channel) + 
+                 ", CC: " + String(number) + 
+                 ", Value: " + String(value));
+
     for (uint8_t i = 0; i < MIDI_MAX_SERVOS; i++) {
         ServoConfig& config = servos[i];
 
@@ -83,16 +127,22 @@ void MIDIServoController::handleControlChange(byte channel, byte number, byte va
             config.lastCoarsePosition = value;
             uint16_t fullValue = (config.lastCoarsePosition << 7) | (config.fineCCPosition < 0xFF ? 0 : value);
             config.targetPos = mapCCToMicroseconds(fullValue, config);
-        } else if (number == config.fineCCPosition) {
+            Debug::debug("Servo " + String(i) + 
+                        " coarse position update: " + String(config.targetPos) + "us");
+        } 
+        else if (number == config.fineCCPosition) {
             uint16_t fullValue = (config.lastCoarsePosition << 7) | value;
             config.targetPos = mapCCToMicroseconds(fullValue, config);
+            Debug::debug("Servo " + String(i) + 
+                        " fine position update: " + String(config.targetPos) + "us");
         }
 
-        // Handle standard 7-bit Speed CC
         if (number == config.CCSpeed) {
             config.speed = mapCCToSpeed(value);
             Serial.print("CC Speed = ");
             Serial.println(value);
+            Debug::debug("Servo " + String(i) + 
+                        " speed update: " + String(config.speed) + " us/ms");
         }
     }
 }

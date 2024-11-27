@@ -5,6 +5,7 @@
 #include <ESP32Servo.h>
 #include <MIDI.h>
 #include <Adafruit_TinyUSB.h> // USB MIDI support
+#include <Debug.h>
 
 #if defined(CONFIG_IDF_TARGET_ESP32S3)
 #define MIDI_MAX_SERVOS 16

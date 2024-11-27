@@ -25,7 +25,7 @@ void MIDIServoController::setServoPin(uint8_t servoIndex, uint8_t pin, int minUs
     config.maxUs = maxUs;
     config.centerUs = centerUs;
     config.currentPos = centerUs;
-    config.targetPos = centerUs;
+    //config.targetPos = centerUs;
 
     config.servo.setPeriodHertz(200);
     config.servo.attach(pin, minUs, maxUs);
@@ -91,6 +91,8 @@ void MIDIServoController::handleControlChange(byte channel, byte number, byte va
         // Handle standard 7-bit Speed CC
         if (number == config.CCSpeed) {
             config.speed = mapCCToSpeed(value);
+            Serial.print("CC Speed = ");
+            Serial.println(value);
         }
     }
 }

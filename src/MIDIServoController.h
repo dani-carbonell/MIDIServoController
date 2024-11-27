@@ -6,10 +6,17 @@
 #include <MIDI.h>
 #include <Adafruit_TinyUSB.h> // USB MIDI support
 
+#if defined(CONFIG_IDF_TARGET_ESP32S3)
+#define MIDI_MAX_SERVOS 16
+#elif defined(CONFIG_IDF_TARGET_ESP32S2) 
+#define MIDI_MAX_SERVOS 8
+#else
+#define MIDI_MAX_SERVOS 16 // Default to 16 servos
+#endif
+
 class MIDIServoController {
 public:
-    static const uint8_t MIDI_MAX_SERVOS = 16; // Support up to 16 servos
-
+    // Remove conflicting constant and use the macro instead
     MIDIServoController();
 
     // Initialize the controller

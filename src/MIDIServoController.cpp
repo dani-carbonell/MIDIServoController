@@ -39,7 +39,7 @@ void MIDIServoController::setServoPin(uint8_t servoIndex, uint8_t pin, int minUs
                 "us, max: " + String(maxUs) + 
                 "us, center: " + String(centerUs) + "us)");
                 
-    config.servo.setPeriodHertz(200);
+    config.servo.setPeriodHertz(300);
     config.servo.attach(pin, minUs, maxUs);
     config.servo.writeMicroseconds(centerUs);
     config.active = true;
@@ -116,9 +116,9 @@ void MIDIServoController::update() {
 }
 
 void MIDIServoController::handleControlChange(byte channel, byte number, byte value) {
-    Debug::debug("CC received - Channel: " + String(channel) + 
+    Debug::debug("RX - Ch: " + String(channel) + 
                  ", CC: " + String(number) + 
-                 ", Value: " + String(value));
+                 ", Val: " + String(value));
 
     for (uint8_t i = 0; i < MIDI_MAX_SERVOS; i++) {
         ServoConfig& config = servos[i];
@@ -128,13 +128,13 @@ void MIDIServoController::handleControlChange(byte channel, byte number, byte va
             uint16_t fullValue = (config.lastCoarsePosition << 7) | (config.fineCCPosition < 0xFF ? 0 : value);
             config.targetPos = mapCCToMicroseconds(fullValue, config);
             Debug::debug("Servo " + String(i) + 
-                        " coarse position update: " + String(config.targetPos) + "us");
+                        " c-pos : " + String(config.targetPos) + " us");
         } 
         else if (number == config.fineCCPosition) {
             uint16_t fullValue = (config.lastCoarsePosition << 7) | value;
             config.targetPos = mapCCToMicroseconds(fullValue, config);
             Debug::debug("Servo " + String(i) + 
-                        " fine position update: " + String(config.targetPos) + "us");
+                        " f-pos : " + String(config.targetPos) + " us");
         }
 
         if (number == config.CCSpeed) {
@@ -142,7 +142,7 @@ void MIDIServoController::handleControlChange(byte channel, byte number, byte va
             Serial.print("CC Speed = ");
             Serial.println(value);
             Debug::debug("Servo " + String(i) + 
-                        " speed update: " + String(config.speed) + " us/ms");
+                        " spd: " + String(config.speed) + " us/ms");
         }
     }
 }

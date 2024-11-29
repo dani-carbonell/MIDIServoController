@@ -14,7 +14,6 @@
 
 #include <Adafruit_TinyUSB.h>
 #include <MIDI.h>
-#include <ESP32Servo.h>
 #include <MIDIServoController.h>
 
 // Create a USB MIDI instance
@@ -28,14 +27,14 @@ MIDIServoController servoController;
 
 void setup() {
     
-    //Uncomment to enable debug output
-    //Serial.begin(115200);
+    Serial.begin(115200);
     //Debug::begin(Serial, Debug::DEBUG_DEBUG);
     
     usb_midi.setStringDescriptor("Servo Controller");
-    // Start USB MIDI
     usb_midi.begin();
     
+    //delay(1000);
+
     // Allocate PWM timers (for ESP32)
     ESP32PWM::allocateTimer(0);
     ESP32PWM::allocateTimer(1);

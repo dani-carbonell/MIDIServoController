@@ -8,10 +8,23 @@ MIDIServoController::MIDIServoController() {
 }
 
 void MIDIServoController::begin(MIDI_NAMESPACE::MidiInterface<MIDI_NAMESPACE::SerialMIDI<Adafruit_USBD_MIDI>>& midiInterface) {
-    // Set up MIDI
     midiInterface.setHandleControlChange(staticControlChangeHandler);
+    midiInterface.setHandleNoteOn(staticNoteOnHandler);
+    midiInterface.setHandleNoteOff(staticNoteOffHandler);
     Debug::info("MIDIServoController initialized");
+}
 
+void MIDIServoController::setShiftRegisterPins(uint8_t data, uint8_t clock, uint8_t latch) {
+    dataPin = data;
+    clockPin = clock;
+    latchPin = latch;
+    
+    pinMode(dataPin, OUTPUT);
+    pinMode(clockPin, OUTPUT);
+    pinMode(latchPin, OUTPUT);
+    
+    shiftRegEnabled = true;
+    Debug::info("Shift register pins configured");
 }
 
 void MIDIServoController::setServoPin(uint8_t servoIndex, uint8_t pin, int minUs, int maxUs, int centerUs) {
@@ -115,6 +128,18 @@ void MIDIServoController::update() {
     }
 }
 
+void MIDIServoController::mapNoteToShiftRegister(uint8_t note, uint8_t bitPosition, uint8_t velocityThreshold) {
+    if (note >= 128 || bitPosition >= (NUM_SHIFT_REGISTERS * 8)) {
+        Debug::error("Invalid note or bit position");
+        return;
+    }
+    
+    noteMappings[note].bitPosition = bitPosition;
+    noteMappings[note].velocityThreshold = velocityThreshold;
+    noteMappings[note].active = true;
+    
+    Debug::info("Note " + String(note) + " mapped to bit " + String(bitPosition));
+}
 void MIDIServoController::handleControlChange(byte channel, byte number, byte value) {
     Debug::debug("RX - Ch: " + String(channel) + 
                  ", CC: " + String(number) + 
@@ -147,10 +172,56 @@ void MIDIServoController::handleControlChange(byte channel, byte number, byte va
     }
 }
 
+
+void MIDIServoController::handleNoteOn(byte channel, byte note, byte velocity) {
+    if (!shiftRegEnabled || note >= 128) return;
+    
+    NoteMapping& mapping = noteMappings[note];
+    if (!mapping.active) return;
+
+    Debug::debug("Note ON: " + String(note) + ", Bit: " + String(mapping.bitPosition));
+
+    if (velocity >= mapping.velocityThreshold) {
+        uint8_t registerIndex = mapping.bitPosition / 8;
+        uint8_t bitIndex = mapping.bitPosition % 8;
+        shiftRegData[registerIndex] |= (1 << bitIndex);
+        updateShiftRegister();
+        Debug::debug("Note ON: " + String(note) + ", Bit: " + String(mapping.bitPosition));
+    }
+}
+
+void MIDIServoController::handleNoteOff(byte channel, byte note, byte velocity) {
+    if (!shiftRegEnabled || note >= 128) return;
+    
+    NoteMapping& mapping = noteMappings[note];
+    if (!mapping.active) return;
+    
+    uint8_t registerIndex = mapping.bitPosition / 8;
+    uint8_t bitIndex = mapping.bitPosition % 8;
+    shiftRegData[registerIndex] &= ~(1 << bitIndex);
+    updateShiftRegister();
+    Debug::debug("Note OFF: " + String(note) + ", Bit: " + String(mapping.bitPosition));
+}
+
+void MIDIServoController::updateShiftRegister() {
+    digitalWrite(latchPin, LOW);
+    for (int i = NUM_SHIFT_REGISTERS - 1; i >= 0; i--) {
+        shiftOut(dataPin, clockPin, MSBFIRST, shiftRegData[i]);
+    }
+    digitalWrite(latchPin, HIGH);
+}
+
 void MIDIServoController::staticControlChangeHandler(byte channel, byte number, byte value) {
     if (instance) {
         instance->handleControlChange(channel, number, value);
     }
+}
+void MIDIServoController::staticNoteOnHandler(byte channel, byte note, byte velocity) {
+    if (instance) instance->handleNoteOn(channel, note, velocity);
+}
+
+void MIDIServoController::staticNoteOffHandler(byte channel, byte note, byte velocity) {
+    if (instance) instance->handleNoteOff(channel, note, velocity);
 }
 
 int MIDIServoController::mapCCToMicroseconds(uint16_t value, const ServoConfig& config) {

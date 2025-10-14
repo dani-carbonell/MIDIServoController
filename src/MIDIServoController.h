@@ -46,6 +46,8 @@ public:
                      uint8_t CCSpeed = 0xFF);
     // Add new methods
     void setShiftRegisterPins(uint8_t dataPin, uint8_t clockPin, uint8_t latchPin);
+    void setNumShiftRegisters(uint8_t numRegisters);
+    void setMidiDebug(bool enable);
     void mapNoteToShiftRegister(uint8_t note, uint8_t bitPosition, uint8_t velocityThreshold = 0);
     
     // Manual servo control (alternative to MIDI)
@@ -97,6 +99,8 @@ private:
     uint8_t clockPin = 0xFF;
     uint8_t latchPin = 0xFF;
     bool shiftRegEnabled = false;
+    uint8_t numShiftRegisters = NUM_SHIFT_REGISTERS; // Runtime configurable
+    bool midiDebugEnabled = false;
     
     // Helper methods
     int mapCCToMicroseconds(uint16_t value, const ServoConfig& config);

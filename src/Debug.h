@@ -45,6 +45,10 @@ public:
         _debugLevel = level;
     }
 
+    static bool isEnabled() {
+        return _debugLevel > DEBUG_NONE;
+    }
+
     template<typename T>
     static void error(const T& message) {
         if (_debugLevel >= DEBUG_ERROR) {

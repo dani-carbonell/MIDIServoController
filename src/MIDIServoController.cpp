@@ -27,6 +27,21 @@ void MIDIServoController::setShiftRegisterPins(uint8_t data, uint8_t clock, uint
     Debug::info("Shift register pins configured");
 }
 
+void MIDIServoController::setNumShiftRegisters(uint8_t numRegisters) {
+    if (numRegisters > MAX_SHIFT_REGISTERS) {
+        Debug::error("Number of shift registers cannot exceed " + String(MAX_SHIFT_REGISTERS));
+        return;
+    }
+    
+    numShiftRegisters = numRegisters;
+    Debug::info("Number of shift registers set to " + String(numRegisters));
+}
+
+void MIDIServoController::setMidiDebug(bool enable) {
+    midiDebugEnabled = enable;
+    Debug::info("MIDI debug " + String(enable ? "enabled" : "disabled"));
+}
+
 void MIDIServoController::setServoPin(uint8_t servoIndex, uint8_t pin, int minUs, int maxUs, int centerUs) {
     if (servoIndex >= MIDI_MAX_SERVOS) {
         Debug::error("Invalid servo index: " + String(servoIndex));
@@ -129,8 +144,8 @@ void MIDIServoController::update() {
 }
 
 void MIDIServoController::mapNoteToShiftRegister(uint8_t note, uint8_t bitPosition, uint8_t velocityThreshold) {
-    if (note >= 128 || bitPosition >= (NUM_SHIFT_REGISTERS * 8)) {
-        Debug::error("Invalid note or bit position");
+    if (note >= 128 || bitPosition >= (numShiftRegisters * 8)) {
+        Debug::error("Invalid note or bit position - Note: " + String(note) + ", Bit: " + String(bitPosition) + ", Max bits: " + String(numShiftRegisters * 8));
         return;
     }
     
@@ -138,12 +153,12 @@ void MIDIServoController::mapNoteToShiftRegister(uint8_t note, uint8_t bitPositi
     noteMappings[note].velocityThreshold = velocityThreshold;
     noteMappings[note].active = true;
     
-    Debug::info("Note " + String(note) + " mapped to bit " + String(bitPosition));
+    Debug::info("Note " + String(note) + " mapped to bit " + String(bitPosition) + " (Register: " + String(bitPosition / 8) + ", Bit: " + String(bitPosition % 8) + ")");
 }
 void MIDIServoController::handleControlChange(byte channel, byte number, byte value) {
-    Debug::debug("RX - Ch: " + String(channel) + 
-                 ", CC: " + String(number) + 
-                 ", Val: " + String(value));
+    if (midiDebugEnabled) {
+        Debug::debug("CC" + String(number) + ":" + String(value));
+    }
 
     for (uint8_t i = 0; i < MIDI_MAX_SERVOS; i++) {
         ServoConfig& config = servos[i];
@@ -164,8 +179,6 @@ void MIDIServoController::handleControlChange(byte channel, byte number, byte va
 
         if (number == config.CCSpeed) {
             config.speed = mapCCToSpeed(value);
-            Serial.print("CC Speed = ");
-            Serial.println(value);
             Debug::debug("Servo " + String(i) + 
                         " spd: " + String(config.speed) + " us/ms");
         }
@@ -174,6 +187,10 @@ void MIDIServoController::handleControlChange(byte channel, byte number, byte va
 
 
 void MIDIServoController::handleNoteOn(byte channel, byte note, byte velocity) {
+    if (midiDebugEnabled) {
+        Debug::debug("N" + String(note) + ":" + String(velocity));
+    }
+    
     if (!shiftRegEnabled || note >= 128) return;
     
     NoteMapping& mapping = noteMappings[note];
@@ -191,6 +208,10 @@ void MIDIServoController::handleNoteOn(byte channel, byte note, byte velocity) {
 }
 
 void MIDIServoController::handleNoteOff(byte channel, byte note, byte velocity) {
+    if (midiDebugEnabled) {
+        Debug::debug("n" + String(note) + ":" + String(velocity));
+    }
+    
     if (!shiftRegEnabled || note >= 128) return;
     
     NoteMapping& mapping = noteMappings[note];
@@ -205,7 +226,7 @@ void MIDIServoController::handleNoteOff(byte channel, byte note, byte velocity) 
 
 void MIDIServoController::updateShiftRegister() {
     digitalWrite(latchPin, LOW);
-    for (int i = NUM_SHIFT_REGISTERS - 1; i >= 0; i--) {
+    for (int i = numShiftRegisters - 1; i >= 0; i--) {
         shiftOut(dataPin, clockPin, MSBFIRST, shiftRegData[i]);
     }
     digitalWrite(latchPin, HIGH);

@@ -6,6 +6,7 @@
 #include <MIDI.h>
 #include <Adafruit_TinyUSB.h> // USB MIDI support
 #include <Debug.h>
+#include "Telemetry.h"
 
 
 // Configuration constants
@@ -60,6 +61,14 @@ public:
     // MIDI Callback (attach this to MIDI library)
     void handleControlChange(byte channel, byte number, byte value);
 
+#if MIDISC_TELEMETRY
+    // Telemetry: stream timing/jitter data over the given Stream (e.g., Serial).
+    // Mutes Debug output to avoid interleaving on a shared stream.
+    void enableTelemetry(Stream& out, uint16_t bufSize = 256);
+    void setTelemetrySeqCCs(uint8_t hiCC, uint8_t loCC);
+    void setTelemetryFlushPeriodUs(uint32_t us);
+#endif
+
     // Static instance for callback
     static MIDIServoController* instance;
 
@@ -111,6 +120,11 @@ private:
     void updateShiftRegister();
     void handleNoteOn(byte channel, byte note, byte velocity);
     void handleNoteOff(byte channel, byte note, byte velocity);
+
+#if MIDISC_TELEMETRY
+    MIDISCTelemetry::Telemetry telemetry;
+    uint32_t lastUpdateEntryUs = 0;
+#endif
 
 };
 

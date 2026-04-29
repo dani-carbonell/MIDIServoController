@@ -14,6 +14,22 @@ void MIDIServoController::begin(MIDI_NAMESPACE::MidiInterface<MIDI_NAMESPACE::Se
     Debug::info("MIDIServoController initialized");
 }
 
+#if MIDISC_TELEMETRY
+void MIDIServoController::enableTelemetry(Stream& out, uint16_t bufSize) {
+    // Mute Debug to avoid interleaving with telemetry CSV on a shared stream.
+    Debug::setLevel(Debug::DEBUG_NONE);
+    telemetry.begin(out, bufSize);
+}
+
+void MIDIServoController::setTelemetrySeqCCs(uint8_t hiCC, uint8_t loCC) {
+    telemetry.setSeqCCs(hiCC, loCC);
+}
+
+void MIDIServoController::setTelemetryFlushPeriodUs(uint32_t us) {
+    telemetry.setFlushPeriodUs(us);
+}
+#endif
+
 void MIDIServoController::setShiftRegisterPins(uint8_t data, uint8_t clock, uint8_t latch) {
     dataPin = data;
     clockPin = clock;
@@ -117,6 +133,16 @@ void MIDIServoController::setServoSpeed(uint8_t servoIndex, float speedUsPerMs) 
 }
 
 void MIDIServoController::update() {
+#if MIDISC_TELEMETRY
+    bool tel = telemetry.isEnabled();
+    uint32_t t_entry = 0, loop_dt = 0;
+    if (tel) {
+        t_entry = micros();
+        loop_dt = (lastUpdateEntryUs == 0) ? 0 : (uint32_t)(t_entry - lastUpdateEntryUs);
+        lastUpdateEntryUs = t_entry;
+    }
+#endif
+
     unsigned long currentMillis = millis();
     unsigned long deltaTime = currentMillis - previousMillis;
     previousMillis = currentMillis;
@@ -141,6 +167,14 @@ void MIDIServoController::update() {
         
         config.servo.writeMicroseconds(newPos);
     }
+
+#if MIDISC_TELEMETRY
+    if (tel) {
+        uint32_t t_exit = micros();
+        telemetry.recordLoopTick(loop_dt, (uint32_t)(t_exit - t_entry));
+        telemetry.flush(t_exit);
+    }
+#endif
 }
 
 void MIDIServoController::mapNoteToShiftRegister(uint8_t note, uint8_t bitPosition, uint8_t velocityThreshold) {
@@ -156,6 +190,16 @@ void MIDIServoController::mapNoteToShiftRegister(uint8_t note, uint8_t bitPositi
     Debug::info("Note " + String(note) + " mapped to bit " + String(bitPosition) + " (Register: " + String(bitPosition / 8) + ", Bit: " + String(bitPosition % 8) + ")");
 }
 void MIDIServoController::handleControlChange(byte channel, byte number, byte value) {
+#if MIDISC_TELEMETRY
+    bool tel = telemetry.isEnabled();
+    uint32_t t_rx = tel ? micros() : 0;
+    if (tel && telemetry.tryConsumeSeqCC(number, value)) {
+        uint32_t t_done = micros();
+        telemetry.recordHandlerCost((uint32_t)(t_done - t_rx));
+        return;
+    }
+#endif
+
     if (midiDebugEnabled) {
         Debug::debug("CC" + String(number) + ":" + String(value));
     }
@@ -179,22 +223,53 @@ void MIDIServoController::handleControlChange(byte channel, byte number, byte va
 
         if (number == config.CCSpeed) {
             config.speed = mapCCToSpeed(value);
-            Debug::debug("Servo " + String(i) + 
+            Debug::debug("Servo " + String(i) +
                         " spd: " + String(config.speed) + " us/ms");
         }
     }
+
+#if MIDISC_TELEMETRY
+    if (tel) {
+        uint32_t t_done = micros();
+        telemetry.recordEvent(MIDISCTelemetry::EV_CC, number, value, t_rx, t_done);
+        telemetry.recordHandlerCost((uint32_t)(t_done - t_rx));
+    }
+#endif
 }
 
 
 void MIDIServoController::handleNoteOn(byte channel, byte note, byte velocity) {
+#if MIDISC_TELEMETRY
+    bool tel = telemetry.isEnabled();
+    uint32_t t_rx = tel ? micros() : 0;
+#endif
+
     if (midiDebugEnabled) {
         Debug::debug("N" + String(note) + ":" + String(velocity));
     }
-    
-    if (!shiftRegEnabled || note >= 128) return;
-    
+
+    if (!shiftRegEnabled || note >= 128) {
+#if MIDISC_TELEMETRY
+        if (tel) {
+            uint32_t t_done = micros();
+            telemetry.recordEvent(MIDISCTelemetry::EV_NOTE_ON, note, velocity, t_rx, t_done);
+            telemetry.recordHandlerCost((uint32_t)(t_done - t_rx));
+        }
+#endif
+        return;
+    }
+
     NoteMapping& mapping = noteMappings[note];
-    if (!mapping.active) return;
+    if (!mapping.active) {
+#if MIDISC_TELEMETRY
+        if (tel) {
+            uint32_t t_done = micros();
+            telemetry.recordEvent(MIDISCTelemetry::EV_NOTE_ON, note, velocity, t_rx, t_done);
+            telemetry.recordHandlerCost((uint32_t)(t_done - t_rx));
+        }
+#endif
+        return;
+    }
 
     Debug::debug("Note ON: " + String(note) + ", Bit: " + String(mapping.bitPosition));
 
@@ -205,23 +280,62 @@ void MIDIServoController::handleNoteOn(byte channel, byte note, byte velocity) {
         updateShiftRegister();
         Debug::debug("Note ON: " + String(note) + ", Bit: " + String(mapping.bitPosition));
     }
+
+#if MIDISC_TELEMETRY
+    if (tel) {
+        uint32_t t_done = micros();
+        telemetry.recordEvent(MIDISCTelemetry::EV_NOTE_ON, note, velocity, t_rx, t_done);
+        telemetry.recordHandlerCost((uint32_t)(t_done - t_rx));
+    }
+#endif
 }
 
 void MIDIServoController::handleNoteOff(byte channel, byte note, byte velocity) {
+#if MIDISC_TELEMETRY
+    bool tel = telemetry.isEnabled();
+    uint32_t t_rx = tel ? micros() : 0;
+#endif
+
     if (midiDebugEnabled) {
         Debug::debug("n" + String(note) + ":" + String(velocity));
     }
-    
-    if (!shiftRegEnabled || note >= 128) return;
-    
+
+    if (!shiftRegEnabled || note >= 128) {
+#if MIDISC_TELEMETRY
+        if (tel) {
+            uint32_t t_done = micros();
+            telemetry.recordEvent(MIDISCTelemetry::EV_NOTE_OFF, note, velocity, t_rx, t_done);
+            telemetry.recordHandlerCost((uint32_t)(t_done - t_rx));
+        }
+#endif
+        return;
+    }
+
     NoteMapping& mapping = noteMappings[note];
-    if (!mapping.active) return;
-    
+    if (!mapping.active) {
+#if MIDISC_TELEMETRY
+        if (tel) {
+            uint32_t t_done = micros();
+            telemetry.recordEvent(MIDISCTelemetry::EV_NOTE_OFF, note, velocity, t_rx, t_done);
+            telemetry.recordHandlerCost((uint32_t)(t_done - t_rx));
+        }
+#endif
+        return;
+    }
+
     uint8_t registerIndex = mapping.bitPosition / 8;
     uint8_t bitIndex = mapping.bitPosition % 8;
     shiftRegData[registerIndex] &= ~(1 << bitIndex);
     updateShiftRegister();
     Debug::debug("Note OFF: " + String(note) + ", Bit: " + String(mapping.bitPosition));
+
+#if MIDISC_TELEMETRY
+    if (tel) {
+        uint32_t t_done = micros();
+        telemetry.recordEvent(MIDISCTelemetry::EV_NOTE_OFF, note, velocity, t_rx, t_done);
+        telemetry.recordHandlerCost((uint32_t)(t_done - t_rx));
+    }
+#endif
 }
 
 void MIDIServoController::updateShiftRegister() {
